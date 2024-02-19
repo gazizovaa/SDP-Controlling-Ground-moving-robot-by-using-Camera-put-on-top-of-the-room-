@@ -6,13 +6,32 @@ from scipy.optimize import curve_fit
 # Open the camera (use 0 for the default camera)
 cap = cv2.VideoCapture(0)
 
+# Calculate the robot kinematics
+radius_of_robots = 1.0
+radius_of_motors = 1.0
+duration_of_time_steps = 0.1
 
-# Control Algorithm
-# Calculate robot kinematics
-# def robot_kinematics(left_motor_velocity, right_motor_velocity, stepped_time):
-# Calculate linear and angular velocities
-# linear_velocity = (right_motor_velocity + left_motor_velocity) / 2
-# angular_velocity = (right_motor_velocity - left_motor_velocity) / (2 * a)
+robot_pose = np.array([0, 0, np.pi / 2])
+motor_velocities = np.array([1.0, 1.0])
+
+
+def calculate_robot_kinematics():
+    global robot_pose
+    left_velocity, right_velocity = motor_velocities
+
+    # Calculate the linear and angular velocities of motors
+    linear_velocity = radius_of_motors * (left_velocity + right_velocity) / 2
+    angular_velocity = radius_of_motors * (right_velocity - left_velocity) / (radius_of_robots * 2)
+
+    # Duration in robot's pose
+    x_delta = linear_velocity * duration_of_time_steps * np.cos(robot_pose[2])
+    y_delta = linear_velocity * duration_of_time_steps * np.sin(robot_pose[2])
+    alpha_delta = angular_velocity * duration_of_time_steps
+
+    # Update the robot's pose
+    robot_pose = robot_pose + np.array([x_delta, y_delta, alpha_delta])
+
+
 def draw_curve_with_mouse_events(event, x, y, flags, params):
     global lines_arr
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -82,7 +101,7 @@ def calculate_distance_angle_and_midpoint(coord1, coord2):
         # Calculate distance using the Euclidean distance formula
         distance = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-        # Calculate angle using arctangent
+        # Calculate angle using arc tangent
         angle_rad = np.arctan2(y2 - y1, x2 - x1)
         angle_deg = np.degrees(angle_rad)
 
@@ -107,6 +126,9 @@ try:
     while True:
         # Load the frame
         ret, frame = cap.read()
+
+        # Invoke the function related to the robot kinematics
+        calculate_robot_kinematics()
 
         # Draw the path
         for line_start_point in range(1, len(lines_arr)):
